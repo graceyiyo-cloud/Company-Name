@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業名稱管理系統</title>
+    <!-- 使用 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 使用 Lucide 圖標庫 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* 文青風自定義滾動條：更細緻、顏色更融合 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d6d3cd; /* 暖灰色 */
+            border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #b8b5af;
+        }
+        
+        /* 讓輸入框 focus 時的框線更柔和 */
+        .focus-ring {
+            transition: all 0.3s ease;
+        }
+        .focus-ring:focus-within {
+            box-shadow: 0 0 0 2px rgba(168, 162, 158, 0.3); /* 石灰色光暈 */
+        }
+        
+        /* 選擇文字的顏色改為文青綠 */
+        ::selection {
+            background: #dbece5;
+            color: #1c1917;
+        }
+    </style>
+</head>
+<!-- 背景維持暖米色，文字顏色加深至近乎黑色的深褐色 (#292524) -->
+<body class="min-h-screen bg-[#f5f2eb] p-6 font-sans text-[#292524]">
+    
+    <div class="max-w-md mx-auto">
+        <!-- 標題與重置按鈕 -->
+        <div class="flex justify-between items-end mb-8 px-2">
+            <div>
+                <!-- 標題加粗 font-bold，顏色加深 -->
+                <h1 class="text-2xl font-bold tracking-widest text-[#1c1917] border-b-2 border-[#a8a29e] pb-1 inline-block">企業名稱</h1>
+                <p class="text-xs text-[#78716c] mt-2 tracking-wide font-medium">蒐集與紀錄 · 靜謐管理</p>
+            </div>
+            <button 
+                onclick="handleReset()"
+                class="group flex items-center gap-1.5 text-xs text-[#78716c] hover:text-[#9f5d5d] transition-all duration-300 font-medium"
+                title="重置回初始清單"
+            >
+                <div class="p-1 rounded-full border border-transparent group-hover:border-[#9f5d5d]/30 transition-all">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                </div>
+                <span class="tracking-wider">重置</span>
+            </button>
+        </div>
+
+        <!-- 搜尋欄位 -->
+        <!-- 改為懸浮卡片式設計，陰影更柔和 -->
+        <div class="mb-5 relative group">
+            <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <!-- Icon 顏色加深 -->
+                <i data-lucide="search" class="w-4 h-4 text-[#78716c] group-focus-within:text-[#57534e] transition-colors"></i>
+            </div>
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="搜尋名稱..."
+                oninput="renderList()"
+                onfocus="this.value=''; renderList()"
+                class="w-full pl-11 pr-10 py-3.5 bg-[#fdfcfb] text-[#1c1917] font-medium rounded-2xl shadow-sm border-0 ring-1 ring-[#d6d3cd] focus:ring-2 focus:ring-[#78716c] placeholder-[#a8a29e] outline-none transition-all duration-300 text-sm tracking-wide"
+            >
+            <button 
+                onclick="clearSearch()"
+                id="clearSearchBtn"
+                class="hidden absolute inset-y-0 right-3 flex items-center text-[#a8a29e] hover:text-[#57534e] transition-colors"
+            >
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <!-- 新增欄位 -->
+        <div class="relative flex mb-8 group">
+            <input
+                type="text"
+                id="newNameInput"
+                placeholder="輸入欲新增的名稱..."
+                class="w-full pl-5 pr-14 py-3.5 bg-[#fdfcfb] text-[#1c1917] font-medium rounded-2xl shadow-sm border-0 ring-1 ring-[#d6d3cd] focus:ring-2 focus:ring-[#8da399] placeholder-[#a8a29e] outline-none transition-all duration-300 text-sm tracking-wide"
+                onkeypress="if(event.key === 'Enter') handleAdd()"
+            >
+            <!-- 按鈕顏色改為莫蘭迪綠 -->
+            <button 
+                onclick="handleAdd()"
+                class="absolute right-2 top-2 bottom-2 aspect-square bg-[#8da399] text-white rounded-xl flex items-center justify-center hover:bg-[#6b857a] shadow-sm hover:shadow transition-all duration-300 transform active:scale-95"
+                title="點擊新增"
+            >
+                <i data-lucide="plus" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- 結果統計 -->
+        <div class="flex justify-between items-center mb-3 px-3 text-xs tracking-wider">
+            <span class="text-[#78716c] font-medium">
+                共 <span id="countDisplay" class="text-[#44403c] font-bold mx-1">0</span> 筆紀錄
+            </span>
+            <div class="flex items-center gap-1.5 text-[#6b857a]">
+                <i data-lucide="check-circle-2" class="w-3 h-3"></i>
+                <span class="font-medium">已自動儲存</span>
+            </div>
+        </div>
+
+        <!-- 清單顯示區域 -->
+        <!-- 移除外框線，改用純背景色塊與內部陰影感 -->
+        <div class="bg-[#fdfcfb] rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
+            <div id="listContainer" class="max-h-[60vh] overflow-y-auto custom-scrollbar p-2">
+                <!-- 由 JavaScript 動態生成 -->
+            </div>
+        </div>
+
+        <!-- 頁尾提示 -->
+        <div class="mt-8 text-center">
+            <p class="text-[#a8a29e] text-xs tracking-widest font-medium">
+                COPY · DELETE · MANAGE
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const initialData = [
+            "亞鼎營造有限公司", "中和設計顧問有限公司吳臣忠", "冠鼎盈工業股份有限公司", "台灣水泥股份有限公司高雄水泥製品廠台南分廠", 
+            "盈昌金屬建材行蔣明憲", "生原家電股份有限公司", "水湖建材行：李沛堂", "協樹興業有限公司", "金泰開發機電股份有限公司", 
+            "樂亦潔清潔有限公司", "郭彥鴻", "高鼎企業行：王芮珊", "合慶鋁門窗行董博堯", "佳士康包裝飲用水工業股份有限公司", 
+            "坤億建材有限公司", "凱薪事務商行梅宗凱", "致欣環保科技有限公司", "祥隆防水程茂偉", "迅捷科技工程行陳玉芬", "有翔行", 
+            "琴雄工程行鄭麗琴", "捷絲磁磚有限公司", "洪唯哲", "合一環保工程有限公司", "全聖鋐工程有限公司", "東昇人力工程行", 
+            "亞東預拌混凝土股份有限公司台南廠", "朝盛鋼鐵有限公司", "曾至瑩", "集立廣告社", "全盈廣告社莊靜宜", "這麼胖有限公司", 
+            "幸福家房產事業有限公司", "鴻成不動產開發有限公司", "臺南市不動產開發商業同業公會", "（河－可＋靜）川建設事業有限公司", 
+            "長川營造股份有限公司", "聿川建設事業股份有限公司", "黃怡誠", "廣信生物科技有限公司", "大翔貿易有限公司", 
+            "臺灣區綜合營造業同業公會", "蔡孟諺", "倪培溢", "陳琬薏", "葉家銘", "維展光學企業有限公司", "禾億開發有限公司", 
+            "臺南市政府工務局代收款專戶", "江宛儒", "陳子龍", "周慶彰", "李奕緯", "鑫磊石材藝術整合企業社張清順", "冠頂石材有限公司", 
+            "中冠五金行楊美麗", "固壁寶企業有限公司", "易利晟鋼鐵股份有限公司", "尚和億石材股份有限公司", "達成工業有限公司", 
+            "本聯企業社", "永合勝建材有限公司", "毅成企業社", "允穩工程有限公司", "志豐音響社邱鈴美", "王奕霖", "林俊賢", 
+            "心一企業股份有限公司", "華特廣告行", "建億玻璃行辛清安", "再來得股份有限公司", "益菱工業股份有限公司", "格園企業有限公司", 
+            "宗群科技工程股份有限公司", "信佑工程行", "順成起重工程行：黃雅萍", "中興保全科技股份有限公司", "誠州工程行", 
+            "福安室內裝修股份有限公司", "菩呈股份有限公司", "展聖企業股份有限公司", "謝煥昇土木結構技師事務所", "誠榮企業社", 
+            "誼茂橡膠化學工業有限公司", "源泉工程行王奕傑", "台灣櫻花股份有限公司", "榮輝實業有限公司", "富詠欣實業社陳玉寧", 
+            "林永和", "林俊昌", "方信詠", "昆原企業有限公司", "黃郁倫", "綠節能專業照明有限公司", "東慶建材有限公司", 
+            "宏倢土木包工業黃佳雯", "竑旺國際興業有限公司", "竣豐建材實業", "凱新保力龍有限公司", "寶麗石業社張宜雅", "合一起重工程行", 
+            "陸和廣告招牌社：陳琰裕", "玉帛美學有限公司", "農慶企業社", "姊妹烘焙坊劉泱嬅", "李應吉", "上川開發有限公司", 
+            "群麗國際興業有限公司", "天豐五金商行", "景揚鋁材股份有限公司", "億宏清潔企業行", "和昌衛材總匯有限公司", "昱泰起重有限公司", 
+            "鴻毅盛環保企業有限公司", "康森室內裝修工程有限公司", "弘吉工程行方建朝", "名達電器行", "瑞樹聯合有限公司", "張仲毅", 
+            "吳金華稅務記帳士事務所", "盛建企業股份有限公司", "宏典企業有限公司", "日立永大電梯股份有限公司台南分公司", "詳澔國際實業有限公司", 
+            "青霆有限公司", "傑伶有限公司", "龍洋通信工程行翁參龍", "耘企劃行銷整合有限公司", "幸福家地政士事務所卓英杰", 
+            "諦門室內裝修設計：曾輝榮", "陳煜文", "嘉宏顏料廠有限公司", "和謙工程有限公司", "世磊實業股份有限公司", "鶴創意整合工作室黃昭綸", 
+            "竣碩工程有限公司", "聯億廣告事業有限公司", "數字廣告股份有限公司", "羅伊真照明設計有限公司", "瑞東金屬企業社", 
+            "日堯建材有限公司", "龍鋐企業有限公司", "文奇工程有限公司", "毅太企業股份有限公司", "藍天資訊有限公司", "新光人壽保險股份有限公司", 
+            "程方工程行楊懷方", "圖馬克有限公司", "昀坦有限公司", "永順行建材有限公司", "吉馨實業股份有限公司", "昇茂辦公家具行", 
+            "富山淨水有限公司", "新亮物業開發股份有限公司", "開通大地工程股份有限公司", "蔡紝淇", "陶喜建設有限公司", "周富淋", 
+            "王夢涵", "捷立廣告有限公司", "雷諾博有限公司", "東鋮企業股份有限公司", "喬彬有限公司", "品門室內裝修設計有限公司", 
+            "德匠名廚股份有限公司", "裕承勞安有限公司", "台灣貝達貿易有限公司", "丞毅廣告社", "亮晶晶廣告設計", "方堂建築工作室方國昌", 
+            "菱豪股份有限公司", "台灣碩網網路娛樂股份有限公司", "大工測量資訊有限公司", "王東奎建築師事務所", "正晟環保工程有限公司", 
+            "全進企業社何韋漢", "竹勝企業有限公司", "佶興南木材有限公司", "嘉育實業社", "富邑工程行謝東立", "羅健豪", "迦大照明商店", 
+            "綵益工程行陳俊嘉", "順美玻璃行", "品奇工程行", "黃婷鈺", "張朝凱", "七股水產有限公司", "鴻運金不動產開發有限公司", 
+            "鴻運通不動產開發有限公司", "陳容盈", "禹泰工程行張麗沁", "黃建興", "富國廣告銅字製造廠黃煥仁", "俐福實業有限公司", 
+            "鐿盛企業有限公司", "升泰工程行黃其森", "施博議", "金龍泰土木包工業毛宏竹", "詮展工程有限公司", "三拾數位空間有限公司", 
+            "安鼎工程顧問有限公司", "臺南市不動產代銷經紀商業同業公會", "黃玉君", "權藝術有限公司", "力大企業有限公司", 
+            "億隆水泥製品行蔡嘉文", "名人多媒體股份有限公司", "巧益企業有限公司", "國產建材實業股份有限公司", "梁家銘", "廖俊儀", 
+            "王星斌", "李名宸", "李宗穎", "林雅玲", "許威庭", "陳宜珺", "陳玟蓁", "陳樹貴", "傅茂峰", "楊惠珠", "溫進輝", "鄭宇盛", 
+            "柏奇環境科技工程企業有限公司", "陽光廣播電台股份有限公司", "偉昇實業有限公司", "圖昀坦工程行洪誌瞰", "品川設計工程行錢薇臨", 
+            "長今科技有限公司", "禾象國際規劃設計有限公司", "衛全建材股份有限公司", "新光產物保險股份有限公司", "幸福家事業有限公司", 
+            "汪志亮", "郭淑君", "林慧雅", "陳志強", "彭蒂秦", "啟暘工程行", "瀞川建設事業有限公司", "幸福家事業有限公司民生分公司", 
+            "幸福家事業有限公司東橋營業處所", "幸福家事業有限公司崇善營業處所", "幸福家事業有限公司後甲分公司", "幸福家事業有限公司佳里分公司", 
+            "鴻運興不動產開發有限公司", "浤大不動產開發有限公司", "鴻運發不動產開發有限公司", "鴻運家不動產開發有限公司", 
+            "鴻運展不動產開發有限公司", "鴻運吉不動產開發有限公司", "幸福家事業有限公司歸仁營業處所", "幸福家不動產開發有限公司", 
+            "鴻運旺不動產開發有限公司", "鴻運富不動產開發有限公司", "鴻運大不動產開發有限公司", "鴻運鴻不動產開發有限公司", 
+            "鴻運承不動產開發有限公司", "鴻運隆不動產開發有限公司", "鴻運豐不動產開發有限公司", "鴻運齊不動產開發有限公司", 
+            "陳奕羽", "陳敬昌", "邱明發", "吳沈瑞美", "戴毅銘", "聖恩水電企業行李阿蕊", "黃秀筑", "王俊智", "陳玟雅", "林唯臻", 
+            "楊雅婷", "黃靖雅", "涂俞君", "郭沛臻", "李芮萭", "李玠荻", "林羿君", "張曉雲", "陳翔菁", "南崋鑫工業有限公司", 
+            "鄭仰均", "登磁工程行黃登園", "甲頂工程行張守櫻", "好日創意工作室楊淑雲", "東信得有限公司", "承煒室內裝修有限公司", 
+            "聿川沐夏社區管理委員會周家慶", "龍詮水電工程行王振哲", "九九衛生清潔行陳德勝", "誠業地產投資開發有限公司", 
+            "臺灣中華日報社股份有限公司", "幸福家地政士事務所", "頌國際公關顧問有限公司", "蔡瑞龍", "呂忠壽", "廣太旅行社有限公司", 
+            "可樂旅遊旅行社股份有限公司台南分公司", "百鴻揚娛樂事業有限公司", "第一商業銀行受託信託財產專戶", "日陽大地有限公司", 
+            "英屬維京群島商弘日數位科技股份有限公司台灣分公司", "欣和工程行", "啟發企業社張啟超", "鄭世沂", "方建朝", "簡緯喆", 
+            "駿逸實業有限公司", "金城堡建材股份有限公司", "台灣藝園", "億美大理石工廠股份有限公司", "翔隼企業有限公司", 
+            "鈺緯實業社：黃天賜", "欣佳工程有限公司", "桔榮工程行", "國泰五金行", "濬邦大地工程有限公司", "自由時報企業股份有限公司", 
+            "社團法人台南市土木技師公會", "達億建設開發有限公司", "張博森建築師事務所張博森", "益展工程行", "桂圓股份有限公司", 
+            "三禾貨櫃有限公司", "鼎源開發工程有限公司", "和運租車股份有限公司", "富雄營造有限公司", "鈞大藝術鐵件製作有限公司", 
+            "三合工作社劉玉靜", "鴻運多不動產開發有限公司", "明台產物保險股份有限公司", "承昇生工程行力建生", "廣洺水電消防工程行張月琴", 
+            "方姿玟", "台灣自來水股份有限公司第六區管理處佳里服務所", "台灣自來水股份有限公司第六區管理處永康服務所", "在和企業社", 
+            "忠禾設計企業社", "順發工程行", "鼎豐建材有限公司", "林知渝", "利昇五金實業社陳翌銘", "鴻茂工業股份有限公司", 
+            "台灣電力股份有限公司台南區營業處", "台灣節能膜科技股份有限公司", "明昌鑿井行", "豪德商貿有限公司", "崇友實業股份有限公司", 
+            "賀鼎股份有限公司", "茂騰國際開發興業有限公司", "星儂工程行王偉仁", "仁潮工程行王文龍", "群鎧工程行", "中星害蟲驅除有限公司", 
+            "寬燁工程行", "金峰扶手有限公司", "佳錩工程行　高添丁", "聿川町社區管理委員會", "張麗沁", "吳怡德（億利工程行）", 
+            "張永昇", "耕品景觀有限公司", "道遠玻璃行", "永聖企業社", "敬美學行銷有限公司", "合成帆布行許勝凱", "特立工程行", 
+            "鐘婉庭", "陳奎綸", "陳毅鋒", "劉柏顯", "林才生", "盈翔建材實業有限公司", "今網智慧科技股份有限公司", "郭衧嫻", 
+            "何宣逸", "張小燕", "上海商業儲蓄銀行信託部", "輝映印刷事業有限公司", "翔湧工程行", "鳳瑋企業有限公司", "新奇工程有限公司", 
+            "穎欣油漆工程行", "張淑惠", "黃士銘", "陳菀嬅", "楊婉婷", "黃鎮宇", "張秀菁", "沈秉祈", "童昭閔", "黃竹華", "陳冠宇", 
+            "蘇雅甄", "張惠美", "翰昇工程行", "陳水木", "毛建國", "林俊宏", "李淯綺", "戴毅銓", "陳娟美", "鄭雪梅", "佰事達環保服務有限公司", 
+            "李幸美", "曾秀敏", "沈春秀", "許以儀", "福和窯業股份有限公司", "楊銘川", "林肇彬", "宋和賓", "君盈金屬有限公司", 
+            "瓊珠電料有限公司", "蔡宇恆", "陳俊雄", "楊棕城", "陳惠莉", "汪家德", "賴俊文", "何順基", "蔡勝民", "劉志旺", "何珮瑜", 
+            "謝順發", "林蘭美", "張家峰", "林士峯", "鄭吉棣", "明侑企業有限公司", "辛福榮", "歐陽瑞明", "鄭敏吟", "方仕豪", "王偉竹", 
+            "陳柏霖", "陳聞隆", "陳建稑", "林明華", "耕莘花坊", "林煬捷", "鄭素霞", "杜志豪", "王正宏", "泰安產物保險股份有限公司", 
+            "李旻螢", "福濟工程有限公司", "吉全開發建設有限公司", "華藝工程行黃豐盛", "中華民國不動產代銷經紀業營業保證基金管理委員會", 
+            "鄭婉君", "李應增", "富利暘建設有限公司", "黃靖樺", "晶華國際酒店股份有限公司台南分公司", "王忠元", "吳孟璋", 
+            "台灣興美保全股份有限公司", "陳苑慈", "陳賜紋", "陳賜典", "許虹儀", "亞設廣告社", "台灣自來水股份有限公司第六區管理處台南服務所", 
+            "張家瑞", "邑晟環衛有限公司", "合雅田室內裝修有限公司", "均曜檢驗科技有限公司", "找活股份有限公司", "十全發電機行", 
+            "觀念告白影像策劃工作室", "張駿耀", "張嘉祐", "錢薇臨", "彩捷廣告行銷企業社劉美祺", "高雄市土木技師公會", "小北百貨有限公司", 
+            "台灣檢驗科技股份有限公司", "富比士網路科技有限公司", "恆酉有限公司", "大禾行銷整合有限公司", "優朋國際股份有限公司", 
+            "僑馥建築經理股份有限公司", "宏亞食品股份有限公司", "黃宇靖", "阮妙碖", "兆勝管理顧問有限公司", "大來禮品贈品有限公司", 
+            "光千數位有限公司", "黃詠漢", "葉沂欣", "謝錦雀", "孟陽有限公司", "江欣珀", "王一帆", "特聖鋼鐵有限公司", "何財榮", 
+            "弘龍木地板工程有限公司", "恆固建材有限公司"
+        ];
+
+        let companies = [];
+
+        // 初始化
+        window.onload = () => {
+            const savedData = localStorage.getItem('company_db');
+            if (savedData) {
+                companies = JSON.parse(savedData);
+            } else {
+                companies = [...initialData];
+            }
+            renderList();
+            lucide.createIcons();
+        };
+
+        // 儲存資料
+        function saveData() {
+            localStorage.setItem('company_db', JSON.stringify(companies));
+        }
+
+        // 渲染清單
+        function renderList() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const listContainer = document.getElementById('listContainer');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+            const countDisplay = document.getElementById('countDisplay');
+
+            // 顯示/隱藏清除搜尋按鈕
+            clearSearchBtn.classList.toggle('hidden', searchTerm === '');
+
+            // 過濾資料
+            const filtered = companies.filter(name => name.toLowerCase().includes(searchTerm));
+            countDisplay.innerText = filtered.length;
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="py-16 text-center select-none">
+                        <div class="inline-block p-4 rounded-full bg-[#f5f2eb] mb-3">
+                            <i data-lucide="coffee" class="w-8 h-8 text-[#d6d3cd]"></i>
+                        </div>
+                        <p class="text-[#a8a29e] tracking-wider text-sm font-medium">一片空白，宛如初雪。</p>
+                    </div>
+                `;
+            } else {
+                let html = '<ul class="divide-y divide-[#f0ece9]">';
+                filtered.forEach((name, index) => {
+                    html += `
+                        <li class="group flex justify-between items-center px-5 py-4 hover:bg-[#f5f2eb]/50 transition-all duration-300">
+                            <!-- 字體從 font-light 改為 font-medium，顏色加深 -->
+                            <span class="text-[#292524] group-hover:text-black transition-colors flex-1 pr-4 text-sm md:text-base tracking-wide font-medium">
+                                ${name}
+                            </span>
+                            <div class="flex items-center gap-2 opacity-40 group-hover:opacity-100 transition-all duration-300">
+                                <!-- 複製按鈕 -->
+                                <button 
+                                    onclick="handleCopy('${name}', this)"
+                                    class="copy-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all text-xs font-medium bg-white border border-[#e7e5e4] text-[#78716c] hover:border-[#aabfb6] hover:text-[#5c7a6e] hover:shadow-sm"
+                                    title="複製"
+                                >
+                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                    <span class="hidden sm:inline">複製</span>
+                                </button>
+                                <!-- 刪除按鈕 -->
+                                <button 
+                                    onclick="handleDelete('${name}')"
+                                    class="p-2 text-[#d6d3cd] hover:text-[#b45f5f] hover:bg-[#fef2f2] rounded-xl transition-all"
+                                    title="刪除"
+                                >
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                listContainer.innerHTML = html;
+            }
+            // 重新初始化圖標
+            lucide.createIcons();
+        }
+
+        // 搜尋清除
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            renderList();
+        }
+
+        // 複製功能
+        function handleCopy(text, btnElement) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                
+                // 視覺反饋
+                const originalContent = btnElement.innerHTML;
+                const originalClass = btnElement.className;
+                
+                // 改為文青綠的 Feedback 樣式
+                btnElement.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all text-xs font-medium bg-[#edf7f2] border border-[#aabfb6] text-[#5c7a6e]";
+                btnElement.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">已複製</span>`;
+                lucide.createIcons();
+
+                setTimeout(() => {
+                    btnElement.innerHTML = originalContent;
+                    btnElement.className = originalClass;
+                    lucide.createIcons();
+                }, 2000);
+            } catch (err) {
+                console.error('複製失敗', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // 新增功能
+        function handleAdd() {
+            const input = document.getElementById('newNameInput');
+            const name = input.value.trim();
+            if (!name) return;
+            if (companies.includes(name)) {
+                alert('此名稱已存在紀錄中');
+                return;
+            }
+            companies.unshift(name);
+            input.value = '';
+            saveData();
+            renderList();
+        }
+
+        // 刪除功能
+        function handleDelete(name) {
+            if (confirm(`確定要刪除「${name}」嗎？`)) {
+                companies = companies.filter(c => c !== name);
+                saveData();
+                renderList();
+            }
+        }
+
+        // 重置功能
+        function handleReset() {
+            if (confirm('將重置回初始狀態，您手動新增的紀錄將會消失。')) {
+                companies = [...initialData];
+                saveData();
+                renderList();
+            }
+        }
+    </script>
+</body>
+</html>
