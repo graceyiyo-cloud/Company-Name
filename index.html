@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>企業名稱管理系統</title>
-    <!-- 使用 Tailwind CSS CDN -->
+    <title>企業名稱管理系統 - 雲端版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 使用 Lucide 圖標庫 -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* 文青風自定義滾動條：更細緻、顏色更融合 */
@@ -37,36 +35,42 @@
             background: #dbece5;
             color: #1c1917;
         }
+
+        /* 讀取中動畫 */
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
     </style>
 </head>
-<!-- 背景維持暖米色，文字顏色加深至近乎黑色的深褐色 (#292524) -->
 <body class="min-h-screen bg-[#f5f2eb] p-6 font-sans text-[#292524]">
     
     <div class="max-w-md mx-auto">
-        <!-- 標題與重置按鈕 -->
         <div class="flex justify-between items-end mb-8 px-2">
             <div>
-                <!-- 標題加粗 font-bold，顏色加深 -->
                 <h1 class="text-2xl font-bold tracking-widest text-[#1c1917] border-b-2 border-[#a8a29e] pb-1 inline-block">企業名稱</h1>
-                <p class="text-xs text-[#78716c] mt-2 tracking-wide font-medium">蒐集與紀錄 · 靜謐管理</p>
+                <p class="text-xs text-[#78716c] mt-2 tracking-wide font-medium flex items-center gap-1">
+                    <span id="connectionStatus" class="w-2 h-2 rounded-full bg-gray-300"></span>
+                    <span>雲端共用 · 靜謐管理</span>
+                </p>
             </div>
             <button 
                 onclick="handleReset()"
                 class="group flex items-center gap-1.5 text-xs text-[#78716c] hover:text-[#9f5d5d] transition-all duration-300 font-medium"
-                title="重置回初始清單"
+                title="將雲端資料重設回初始清單"
             >
                 <div class="p-1 rounded-full border border-transparent group-hover:border-[#9f5d5d]/30 transition-all">
                     <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
                 </div>
-                <span class="tracking-wider">重置</span>
+                <span class="tracking-wider">重設</span>
             </button>
         </div>
 
-        <!-- 搜尋欄位 -->
-        <!-- 改為懸浮卡片式設計，陰影更柔和 -->
         <div class="mb-5 relative group">
             <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <!-- Icon 顏色加深 -->
                 <i data-lucide="search" class="w-4 h-4 text-[#78716c] group-focus-within:text-[#57534e] transition-colors"></i>
             </div>
             <input
@@ -86,7 +90,6 @@
             </button>
         </div>
 
-        <!-- 新增欄位 -->
         <div class="relative flex mb-8 group">
             <input
                 type="text"
@@ -95,44 +98,67 @@
                 class="w-full pl-5 pr-14 py-3.5 bg-[#fdfcfb] text-[#1c1917] font-medium rounded-2xl shadow-sm border-0 ring-1 ring-[#d6d3cd] focus:ring-2 focus:ring-[#8da399] placeholder-[#a8a29e] outline-none transition-all duration-300 text-sm tracking-wide"
                 onkeypress="if(event.key === 'Enter') handleAdd()"
             >
-            <!-- 按鈕顏色改為莫蘭迪綠 -->
             <button 
                 onclick="handleAdd()"
-                class="absolute right-2 top-2 bottom-2 aspect-square bg-[#8da399] text-white rounded-xl flex items-center justify-center hover:bg-[#6b857a] shadow-sm hover:shadow transition-all duration-300 transform active:scale-95"
+                id="addBtn"
+                class="absolute right-2 top-2 bottom-2 aspect-square bg-[#8da399] text-white rounded-xl flex items-center justify-center hover:bg-[#6b857a] shadow-sm hover:shadow transition-all duration-300 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="點擊新增"
             >
                 <i data-lucide="plus" class="w-5 h-5"></i>
             </button>
         </div>
 
-        <!-- 結果統計 -->
         <div class="flex justify-between items-center mb-3 px-3 text-xs tracking-wider">
             <span class="text-[#78716c] font-medium">
-                共 <span id="countDisplay" class="text-[#44403c] font-bold mx-1">0</span> 筆紀錄
+                共 <span id="countDisplay" class="text-[#44403c] font-bold mx-1">...</span> 筆紀錄
             </span>
-            <div class="flex items-center gap-1.5 text-[#6b857a]">
-                <i data-lucide="check-circle-2" class="w-3 h-3"></i>
-                <span class="font-medium">已自動儲存</span>
+            <div class="flex items-center gap-1.5 text-[#6b857a] opacity-0 transition-opacity duration-500" id="saveIndicator">
+                <i data-lucide="cloud-check" class="w-3 h-3"></i>
+                <span class="font-medium">已同步雲端</span>
             </div>
         </div>
 
-        <!-- 清單顯示區域 -->
-        <!-- 移除外框線，改用純背景色塊與內部陰影感 -->
-        <div class="bg-[#fdfcfb] rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
+        <div class="bg-[#fdfcfb] rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden min-h-[300px] relative">
+            <div id="loadingMask" class="absolute inset-0 bg-[#fdfcfb] z-10 flex flex-col items-center justify-center text-[#a8a29e]">
+                <div class="animate-pulse-slow flex flex-col items-center">
+                    <i data-lucide="cloud" class="w-8 h-8 mb-2 text-[#d6d3cd]"></i>
+                    <span class="text-xs tracking-widest font-medium">雲端資料讀取中...</span>
+                </div>
+            </div>
+
             <div id="listContainer" class="max-h-[60vh] overflow-y-auto custom-scrollbar p-2">
-                <!-- 由 JavaScript 動態生成 -->
-            </div>
+                </div>
         </div>
 
-        <!-- 頁尾提示 -->
         <div class="mt-8 text-center">
             <p class="text-[#a8a29e] text-xs tracking-widest font-medium">
-                COPY · DELETE · MANAGE
+                FIREBASE · CLOUD · MANAGE
             </p>
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, setDoc, arrayUnion, arrayRemove, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBW4QQjjRoR-_nnoMga34uExnF07VX4_Ag",
+            authDomain: "company-name-management.firebaseapp.com",
+            projectId: "company-name-management",
+            storageBucket: "company-name-management.firebasestorage.app",
+            messagingSenderId: "64526296504",
+            appId: "1:64526296504:web:b95ded22581cffa02d5b4d",
+            measurementId: "G-SGZ965EBVZ"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // 設定資料庫路徑：集合 "management" -> 檔案 "company_list"
+        const docRef = doc(db, "management", "company_list");
+
+        // 初始大數據資料 (備份用，用於重設)
         const initialData = [
             "亞鼎營造有限公司", "中和設計顧問有限公司吳臣忠", "冠鼎盈工業股份有限公司", "台灣水泥股份有限公司高雄水泥製品廠台南分廠", 
             "盈昌金屬建材行蔣明憲", "生原家電股份有限公司", "水湖建材行：李沛堂", "協樹興業有限公司", "金泰開發機電股份有限公司", 
@@ -156,7 +182,7 @@
             "群麗國際興業有限公司", "天豐五金商行", "景揚鋁材股份有限公司", "億宏清潔企業行", "和昌衛材總匯有限公司", "昱泰起重有限公司", 
             "鴻毅盛環保企業有限公司", "康森室內裝修工程有限公司", "弘吉工程行方建朝", "名達電器行", "瑞樹聯合有限公司", "張仲毅", 
             "吳金華稅務記帳士事務所", "盛建企業股份有限公司", "宏典企業有限公司", "日立永大電梯股份有限公司台南分公司", "詳澔國際實業有限公司", 
-            "青霆有限公司", "傑伶有限公司", "龍洋通信工程行翁參龍", "耘企劃行銷整合有限公司", "幸福家地政士事務所卓英杰", 
+            "青霆有限公司", "傑伶有限公司", "龍洋通訊工程行翁參龍", "耘企劃行銷整合有限公司", "幸福家地政士事務所卓英傑", 
             "諦門室內裝修設計：曾輝榮", "陳煜文", "嘉宏顏料廠有限公司", "和謙工程有限公司", "世磊實業股份有限公司", "鶴創意整合工作室黃昭綸", 
             "竣碩工程有限公司", "聯億廣告事業有限公司", "數字廣告股份有限公司", "羅伊真照明設計有限公司", "瑞東金屬企業社", 
             "日堯建材有限公司", "龍鋐企業有限公司", "文奇工程有限公司", "毅太企業股份有限公司", "藍天資訊有限公司", "新光人壽保險股份有限公司", 
@@ -168,7 +194,7 @@
             "全進企業社何韋漢", "竹勝企業有限公司", "佶興南木材有限公司", "嘉育實業社", "富邑工程行謝東立", "羅健豪", "迦大照明商店", 
             "綵益工程行陳俊嘉", "順美玻璃行", "品奇工程行", "黃婷鈺", "張朝凱", "七股水產有限公司", "鴻運金不動產開發有限公司", 
             "鴻運通不動產開發有限公司", "陳容盈", "禹泰工程行張麗沁", "黃建興", "富國廣告銅字製造廠黃煥仁", "俐福實業有限公司", 
-            "鐿盛企業有限公司", "升泰工程行黃其森", "施博議", "金龍泰土木包工業毛宏竹", "詮展工程有限公司", "三拾數位空間有限公司", 
+            "鐿盛企業有限公司", "昇泰工程行黃其森", "施博議", "金龍泰土木包工業毛宏竹", "詮展工程有限公司", "三拾數位空間有限公司", 
             "安鼎工程顧問有限公司", "臺南市不動產代銷經紀商業同業公會", "黃玉君", "權藝術有限公司", "力大企業有限公司", 
             "億隆水泥製品行蔡嘉文", "名人多媒體股份有限公司", "巧益企業有限公司", "國產建材實業股份有限公司", "梁家銘", "廖俊儀", 
             "王星斌", "李名宸", "李宗穎", "林雅玲", "許威庭", "陳宜珺", "陳玟蓁", "陳樹貴", "傅茂峰", "楊惠珠", "溫進輝", "鄭宇盛", 
@@ -180,7 +206,7 @@
             "鴻運展不動產開發有限公司", "鴻運吉不動產開發有限公司", "幸福家事業有限公司歸仁營業處所", "幸福家不動產開發有限公司", 
             "鴻運旺不動產開發有限公司", "鴻運富不動產開發有限公司", "鴻運大不動產開發有限公司", "鴻運鴻不動產開發有限公司", 
             "鴻運承不動產開發有限公司", "鴻運隆不動產開發有限公司", "鴻運豐不動產開發有限公司", "鴻運齊不動產開發有限公司", 
-            "陳奕羽", "陳敬昌", "邱明發", "吳沈瑞美", "戴毅銘", "聖恩水電企業行李阿蕊", "黃秀筑", "王俊智", "陳玟雅", "林唯臻", 
+            "陳奕羽", "陳敬昌", "邱明發", "吳沈瑞美", "戴毅銘", "聖恩水電企業行李阿蕊", "黃秀築", "王俊智", "陳玟雅", "林唯臻", 
             "楊雅婷", "黃靖雅", "涂俞君", "郭沛臻", "李芮萭", "李玠荻", "林羿君", "張曉雲", "陳翔菁", "南崋鑫工業有限公司", 
             "鄭仰均", "登磁工程行黃登園", "甲頂工程行張守櫻", "好日創意工作室楊淑雲", "東信得有限公司", "承煒室內裝修有限公司", 
             "聿川沐夏社區管理委員會周家慶", "龍詮水電工程行王振哲", "九九衛生清潔行陳德勝", "誠業地產投資開發有限公司", 
@@ -188,7 +214,7 @@
             "可樂旅遊旅行社股份有限公司台南分公司", "百鴻揚娛樂事業有限公司", "第一商業銀行受託信託財產專戶", "日陽大地有限公司", 
             "英屬維京群島商弘日數位科技股份有限公司台灣分公司", "欣和工程行", "啟發企業社張啟超", "鄭世沂", "方建朝", "簡緯喆", 
             "駿逸實業有限公司", "金城堡建材股份有限公司", "台灣藝園", "億美大理石工廠股份有限公司", "翔隼企業有限公司", 
-            "鈺緯實業社：黃天賜", "欣佳工程有限公司", "桔榮工程行", "國泰五金行", "濬邦大地工程有限公司", "自由時報企業股份有限公司", 
+            "鈺緯實業社：黃天賜", "欣佳工程有限公司", "橘榮工程行", "國泰五金行", "濬邦大地工程有限公司", "自由時報企業股份有限公司", 
             "社團法人台南市土木技師公會", "達億建設開發有限公司", "張博森建築師事務所張博森", "益展工程行", "桂圓股份有限公司", 
             "三禾貨櫃有限公司", "鼎源開發工程有限公司", "和運租車股份有限公司", "富雄營造有限公司", "鈞大藝術鐵件製作有限公司", 
             "三合工作社劉玉靜", "鴻運多不動產開發有限公司", "明台產物保險股份有限公司", "承昇生工程行力建生", "廣洺水電消防工程行張月琴", 
@@ -204,7 +230,7 @@
             "蘇雅甄", "張惠美", "翰昇工程行", "陳水木", "毛建國", "林俊宏", "李淯綺", "戴毅銓", "陳娟美", "鄭雪梅", "佰事達環保服務有限公司", 
             "李幸美", "曾秀敏", "沈春秀", "許以儀", "福和窯業股份有限公司", "楊銘川", "林肇彬", "宋和賓", "君盈金屬有限公司", 
             "瓊珠電料有限公司", "蔡宇恆", "陳俊雄", "楊棕城", "陳惠莉", "汪家德", "賴俊文", "何順基", "蔡勝民", "劉志旺", "何珮瑜", 
-            "謝順發", "林蘭美", "張家峰", "林士峯", "鄭吉棣", "明侑企業有限公司", "辛福榮", "歐陽瑞明", "鄭敏吟", "方仕豪", "王偉竹", 
+            "謝順發", "林蘭美", "張家峰", "林士峰", "鄭吉棣", "明侑企業有限公司", "辛福榮", "歐陽瑞明", "鄭敏吟", "方仕豪", "王偉竹", 
             "陳柏霖", "陳聞隆", "陳建稑", "林明華", "耕莘花坊", "林煬捷", "鄭素霞", "杜志豪", "王正宏", "泰安產物保險股份有限公司", 
             "李旻螢", "福濟工程有限公司", "吉全開發建設有限公司", "華藝工程行黃豐盛", "中華民國不動產代銷經紀業營業保證基金管理委員會", 
             "鄭婉君", "李應增", "富利暘建設有限公司", "黃靖樺", "晶華國際酒店股份有限公司台南分公司", "王忠元", "吳孟璋", 
@@ -218,26 +244,48 @@
         ];
 
         let companies = [];
+        let isFirstLoad = true;
 
-        // 初始化
-        window.onload = () => {
-            const savedData = localStorage.getItem('company_db');
-            if (savedData) {
-                companies = JSON.parse(savedData);
+        // 監聽雲端資料變化 (Realtime Updates)
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            const loadingMask = document.getElementById('loadingMask');
+            const connectionStatus = document.getElementById('connectionStatus');
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                // 確保資料是陣列
+                companies = data.names || [];
             } else {
-                companies = [...initialData];
+                // 如果檔案不存在 (第一次使用)，companies 設為空
+                companies = [];
             }
-            renderList();
-            lucide.createIcons();
-        };
 
-        // 儲存資料
-        function saveData() {
-            localStorage.setItem('company_db', JSON.stringify(companies));
+            // 更新 UI 狀態
+            if (isFirstLoad) {
+                loadingMask.classList.add('hidden'); // 隱藏遮罩
+                isFirstLoad = false;
+            }
+            
+            connectionStatus.classList.remove('bg-gray-300', 'bg-red-400');
+            connectionStatus.classList.add('bg-[#6b857a]'); // 綠燈：連線正常
+            
+            renderList();
+        }, (error) => {
+            console.error("雲端連線失敗:", error);
+            document.getElementById('connectionStatus').classList.add('bg-red-400');
+        });
+
+        // 顯示儲存成功的小提示
+        function showSaveIndicator() {
+            const indicator = document.getElementById('saveIndicator');
+            indicator.classList.remove('opacity-0');
+            setTimeout(() => {
+                indicator.classList.add('opacity-0');
+            }, 2000);
         }
 
-        // 渲染清單
-        function renderList() {
+        // 渲染清單 (掛載到 window 以便 HTML 呼叫)
+        window.renderList = function() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const listContainer = document.getElementById('listContainer');
             const clearSearchBtn = document.getElementById('clearSearchBtn');
@@ -251,25 +299,36 @@
             countDisplay.innerText = filtered.length;
 
             if (filtered.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="py-16 text-center select-none">
-                        <div class="inline-block p-4 rounded-full bg-[#f5f2eb] mb-3">
-                            <i data-lucide="coffee" class="w-8 h-8 text-[#d6d3cd]"></i>
+                // 檢查是否因為還沒資料
+                if (companies.length === 0 && searchTerm === '') {
+                    listContainer.innerHTML = `
+                        <div class="py-16 text-center select-none">
+                            <div class="inline-block p-4 rounded-full bg-[#f5f2eb] mb-3">
+                                <i data-lucide="cloud-off" class="w-8 h-8 text-[#d6d3cd]"></i>
+                            </div>
+                            <p class="text-[#a8a29e] tracking-wider text-sm font-medium">雲端暫無資料</p>
+                            <p class="text-[#a8a29e] text-xs mt-2 cursor-pointer hover:text-[#9f5d5d]" onclick="handleReset()">點擊「重設」匯入預設清單</p>
                         </div>
-                        <p class="text-[#a8a29e] tracking-wider text-sm font-medium">一片空白，宛如初雪。</p>
-                    </div>
-                `;
+                    `;
+                } else {
+                    listContainer.innerHTML = `
+                        <div class="py-16 text-center select-none">
+                            <div class="inline-block p-4 rounded-full bg-[#f5f2eb] mb-3">
+                                <i data-lucide="coffee" class="w-8 h-8 text-[#d6d3cd]"></i>
+                            </div>
+                            <p class="text-[#a8a29e] tracking-wider text-sm font-medium">找不到相關紀錄。</p>
+                        </div>
+                    `;
+                }
             } else {
                 let html = '<ul class="divide-y divide-[#f0ece9]">';
                 filtered.forEach((name, index) => {
                     html += `
                         <li class="group flex justify-between items-center px-5 py-4 hover:bg-[#f5f2eb]/50 transition-all duration-300">
-                            <!-- 字體從 font-light 改為 font-medium，顏色加深 -->
                             <span class="text-[#292524] group-hover:text-black transition-colors flex-1 pr-4 text-sm md:text-base tracking-wide font-medium">
                                 ${name}
                             </span>
                             <div class="flex items-center gap-2 opacity-40 group-hover:opacity-100 transition-all duration-300">
-                                <!-- 複製按鈕 -->
                                 <button 
                                     onclick="handleCopy('${name}', this)"
                                     class="copy-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all text-xs font-medium bg-white border border-[#e7e5e4] text-[#78716c] hover:border-[#aabfb6] hover:text-[#5c7a6e] hover:shadow-sm"
@@ -278,7 +337,6 @@
                                     <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                                     <span class="hidden sm:inline">複製</span>
                                 </button>
-                                <!-- 刪除按鈕 -->
                                 <button 
                                     onclick="handleDelete('${name}')"
                                     class="p-2 text-[#d6d3cd] hover:text-[#b45f5f] hover:bg-[#fef2f2] rounded-xl transition-all"
@@ -293,30 +351,25 @@
                 html += '</ul>';
                 listContainer.innerHTML = html;
             }
-            // 重新初始化圖標
             lucide.createIcons();
         }
 
-        // 搜尋清除
-        function clearSearch() {
+        window.clearSearch = function() {
             document.getElementById('searchInput').value = '';
             renderList();
         }
 
-        // 複製功能
-        function handleCopy(text, btnElement) {
+        window.handleCopy = function(text, btnElement) {
             const textArea = document.createElement("textarea");
             textArea.value = text;
             document.body.appendChild(textArea);
             textArea.select();
             try {
                 document.execCommand('copy');
-                
                 // 視覺反饋
                 const originalContent = btnElement.innerHTML;
                 const originalClass = btnElement.className;
                 
-                // 改為文青綠的 Feedback 樣式
                 btnElement.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all text-xs font-medium bg-[#edf7f2] border border-[#aabfb6] text-[#5c7a6e]";
                 btnElement.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">已複製</span>`;
                 lucide.createIcons();
@@ -332,38 +385,77 @@
             document.body.removeChild(textArea);
         }
 
-        // 新增功能
-        function handleAdd() {
+        // 新增功能 (寫入 Firebase)
+        window.handleAdd = async function() {
             const input = document.getElementById('newNameInput');
+            const btn = document.getElementById('addBtn');
             const name = input.value.trim();
+            
             if (!name) return;
             if (companies.includes(name)) {
                 alert('此名稱已存在紀錄中');
                 return;
             }
-            companies.unshift(name);
-            input.value = '';
-            saveData();
-            renderList();
-        }
 
-        // 刪除功能
-        function handleDelete(name) {
-            if (confirm(`確定要刪除「${name}」嗎？`)) {
-                companies = companies.filter(c => c !== name);
-                saveData();
-                renderList();
+            // UI 鎖定
+            input.disabled = true;
+            btn.disabled = true;
+
+            try {
+                // 為了保持「最新在最上面」，我們需要操作完整陣列
+                const newFullList = [name, ...companies];
+                
+                // 寫入整筆陣列到雲端
+                await setDoc(docRef, { names: newFullList }, { merge: true });
+                
+                input.value = '';
+                showSaveIndicator();
+            } catch (error) {
+                console.error("新增失敗: ", error);
+                alert("連線錯誤，無法儲存至雲端。");
+            } finally {
+                input.disabled = false;
+                btn.disabled = false;
+                input.focus();
             }
         }
 
-        // 重置功能
-        function handleReset() {
-            if (confirm('將重置回初始狀態，您手動新增的紀錄將會消失。')) {
-                companies = [...initialData];
-                saveData();
-                renderList();
+        // 刪除功能 (寫入 Firebase)
+        window.handleDelete = async function(name) {
+            if (confirm(`確定要從雲端刪除「${name}」嗎？此動作將同步至所有裝置。`)) {
+                try {
+                    // 使用 arrayRemove 移除特定項目
+                    await updateDoc(docRef, {
+                        names: arrayRemove(name)
+                    });
+                    showSaveIndicator();
+                } catch (error) {
+                    console.error("刪除失敗: ", error);
+                    alert("刪除失敗，請檢查網路連線。");
+                }
             }
         }
+
+        // 重設功能 (覆蓋 Firebase)
+        window.handleReset = async function() {
+            if (confirm('確定要「重設」雲端資料庫嗎？\n\n這將會：\n1. 清除所有您手動新增的紀錄。\n2. 重新匯入系統預設的數百筆原始資料。\n3. 所有共用此網頁的人都會被重設。')) {
+                const loadingMask = document.getElementById('loadingMask');
+                loadingMask.classList.remove('hidden'); // 顯示讀取中
+                
+                try {
+                    await setDoc(docRef, { names: initialData });
+                    showSaveIndicator();
+                } catch (error) {
+                    console.error("重設失敗: ", error);
+                    alert("重設失敗，請檢查網路連線。");
+                } finally {
+                    loadingMask.classList.add('hidden');
+                }
+            }
+        }
+        
+        // 初始 Icon 渲染 (避免載入時閃爍)
+        lucide.createIcons();
     </script>
 </body>
 </html>
