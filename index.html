@@ -6,6 +6,8 @@
     <title>企業名稱管理系統 - 雲端版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 引入 Excel 匯出函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* 文青風自定義滾動條：更細緻、顏色更融合 */
         .custom-scrollbar::-webkit-scrollbar {
@@ -57,16 +59,31 @@
                     <span>雲端共用 · 靜謐管理</span>
                 </p>
             </div>
-            <button 
-                onclick="handleReset()"
-                class="group flex items-center gap-1.5 text-xs text-[#78716c] hover:text-[#9f5d5d] transition-all duration-300 font-medium"
-                title="將雲端資料重設回初始清單"
-            >
-                <div class="p-1 rounded-full border border-transparent group-hover:border-[#9f5d5d]/30 transition-all">
-                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                </div>
-                <span class="tracking-wider">重設</span>
-            </button>
+            
+            <div class="flex items-center gap-3">
+                <!-- 新增：匯出 Excel 按鈕 -->
+                <button 
+                    onclick="handleExport()"
+                    class="group flex items-center gap-1.5 text-xs text-[#78716c] hover:text-[#6b857a] transition-all duration-300 font-medium"
+                    title="匯出目前所有廠商名稱為 Excel"
+                >
+                    <div class="p-1 rounded-full border border-transparent group-hover:border-[#6b857a]/30 transition-all">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <span class="tracking-wider">匯出</span>
+                </button>
+
+                <button 
+                    onclick="handleReset()"
+                    class="group flex items-center gap-1.5 text-xs text-[#78716c] hover:text-[#9f5d5d] transition-all duration-300 font-medium"
+                    title="將雲端資料重設回初始清單"
+                >
+                    <div class="p-1 rounded-full border border-transparent group-hover:border-[#9f5d5d]/30 transition-all">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <span class="tracking-wider">重設</span>
+                </button>
+            </div>
         </div>
 
         <div class="mb-5 relative group">
@@ -451,6 +468,34 @@
                 } finally {
                     loadingMask.classList.add('hidden');
                 }
+            }
+        }
+
+        // 新增：匯出 Excel 功能
+        window.handleExport = function() {
+            if (companies.length === 0) {
+                alert("目前雲端暫無資料可供匯出。");
+                return;
+            }
+
+            try {
+                // 格式化資料為 Excel 要求的二維陣列
+                const data = companies.map(name => [name]);
+                // 加入標題列
+                data.unshift(["廠商名稱"]);
+
+                // 建立工作表
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                // 建立活頁簿
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "廠商清單");
+
+                // 下載 Excel 檔
+                const timestamp = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `廠商名稱清單_${timestamp}.xlsx`);
+            } catch (error) {
+                console.error("匯出失敗: ", error);
+                alert("匯出 Excel 失敗，請稍後再試。");
             }
         }
         
